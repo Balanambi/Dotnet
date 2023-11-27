@@ -1,0 +1,230 @@
+// QueryService.cs
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Threading.Tasks;
+
+public class QueryService
+{
+    private readonly AppDbContext _dbContext;
+    private readonly ILogger<QueryService> _logger;
+
+    public QueryService(AppDbContext dbContext, ILogger<QueryService> logger)
+    {
+        _dbContext = dbContext;
+        _logger = logger;
+    }
+
+    public async Task<QueryResult> ExecuteReadQueryAsync(string query, string connectionString)
+    {
+        return await ExecuteQueryAsync(query, connectionString, CommandType.Text);
+    }
+
+    public async Task<QueryResult> ExecuteWriteQueryAsync(string query, string connectionString)
+    {
+        if (IsDestructiveQuery(query))
+        {
+            return new QueryResult
+            {
+                Success = false,
+                ErrorMessage = "Destructive queries (DELETE, TRUNCATE, DROP, etc.) are not allowed."
+            };
+        }
+
+        return await ExecuteQueryAsync(query, connectionString, CommandType.Text);
+    }
+
+    private bool IsDestructiveQuery(string query)
+    {
+        string[] destructiveKeywords = { "DELETE", "TRUNCATE", "DROP", "ALTER" }; // Add more if needed
+
+        // Convert query to uppercase for case-insensitive check
+        string upperQuery = query.ToUpper();
+
+        return destructiveKeywords.Any(keyword => upperQuery.Contains(keyword));
+    }
+
+    private async Task<QueryResult> ExecuteQueryAsync(string query, string connectionString, CommandType commandType)
+    {
+        var result = new QueryResult();
+
+        try
+        {
+            using var connection = CreateDbConnection(connectionString);
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = query;
+            command.CommandType = commandType;
+
+            using var reader = await command.ExecuteReaderAsync();
+            result.Data = MapDataReader(reader);
+            result.Success = true;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = GetDetailedErrorMessage(ex);
+            _logger.LogError(ex, "Error executing SQL query: {Query}", query);
+        }
+
+        return result;
+    }
+
+    private DbConnection CreateDbConnection(string connectionString)
+    {
+        var connection = _dbContext.Database.GetDbConnection();
+        connection.ConnectionString = connectionString;
+
+        return connection;
+    }
+
+    private List<Dictionary<string, object>> MapDataReader(DbDataReader reader)
+    {
+        var result = new List<Dictionary<string, object>>();
+
+        while (reader.Read())
+        {
+            var row = new Dictionary<string, object>();
+
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                row[reader.GetName(i)] = reader[i];
+            }
+
+            result.Add(row);
+        }
+
+        return result;
+    }
+
+    private string GetDetailedErrorMessage(Exception exception)
+    {
+        // Extract detailed SQL error message if available
+        if (exception is DbException dbException)
+        {
+            return $"SQL Error: {dbException.Message}\n{dbException.StackTrace}";
+        }
+
+        return exception.Message;
+    }
+}
+
+// QueryController.cs
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+
+[ApiController]
+[Route("api/[controller]")]
+public class QueryController : ControllerBase
+{
+    private readonly ILogger<QueryController> _logger;
+    private readonly QueryService _queryService;
+
+    public QueryController(ILogger<QueryController> logger, QueryService queryService)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _queryService = queryService ?? throw new ArgumentNullException(nameof(queryService));
+    }
+
+    [HttpPost("execute")]
+    public IActionResult ExecuteQuery([FromBody] QueryRequest request)
+    {
+        _logger.LogInformation($"Executing query: {request.Query}");
+
+        var result = _queryService.ExecuteQuery(request.Query, request.ConnectionString);
+
+        return Ok(result);
+    }
+}
+
+
+// Startup.cs
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+public class Startup
+{
+    public Startup(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public IConfiguration Configuration { get; }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<QueryService>();
+
+        services.AddControllers()
+            .AddNewtonsoftJson(); // Use Newtonsoft.Json for serialization
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
+        }
+
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+        });
+    }
+}
+
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=YourDatabaseName;Trusted_Connection=True;"
+  }
+}
+
+
+// AppDbContext.cs
+using Microsoft.EntityFrameworkCore;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    {
+    }
+}
+
+
+
+// QueryRequest.cs
+public class QueryRequest
+{
+    public string Query { get; set; }
+    public string ConnectionString { get; set; }
+}
+
+// QueryResult.cs
+public class QueryResult
+{
+    public bool Success { get; set; }
+    public string ErrorMessage { get; set; }
+    public List<Dictionary<string, object>> Data { get; set; }
+}
+
+
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Design
+dotnet add package Microsoft.AspNetCore.Mvc.NewtonsoftJson
