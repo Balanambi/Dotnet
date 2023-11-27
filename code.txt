@@ -228,3 +228,88 @@ public class QueryResult
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 dotnet add package Microsoft.EntityFrameworkCore.Design
 dotnet add package Microsoft.AspNetCore.Mvc.NewtonsoftJson
+
+
+-----testing
+
+dotnet new xunit -n YourProject.Tests
+
+// QueryServiceTests.cs
+using System.Threading.Tasks;
+using Xunit;
+
+public class QueryServiceTests
+{
+    [Fact]
+    public async Task ExecuteReadQuery_ShouldReturnData()
+    {
+        // Arrange
+        var dbContext = // Mock your DbContext or use an in-memory database
+        var queryService = new QueryService(dbContext, null);
+
+        // Act
+        var result = await queryService.ExecuteReadQueryAsync("SELECT * FROM YourTable", "YourConnectionString");
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.Data);
+        Assert.Empty(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ExecuteWriteQuery_ShouldNotAllowDestructiveQueries()
+    {
+        // Arrange
+        var dbContext = // Mock your DbContext or use an in-memory database
+        var queryService = new QueryService(dbContext, null);
+
+        // Act
+        var result = await queryService.ExecuteWriteQueryAsync("DELETE FROM YourTable", "YourConnectionString");
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Contains("not allowed", result.ErrorMessage);
+    }
+}
+
+// QueryControllerTests.cs
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Moq;
+using System.Threading.Tasks;
+using Xunit;
+
+public class QueryControllerTests
+{
+    [Fact]
+    public async Task ExecuteReadQuery_ShouldReturnOkResult()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<QueryController>>();
+        var queryServiceMock = new Mock<QueryService>();
+
+        var controller = new QueryController(loggerMock.Object, queryServiceMock.Object);
+
+        // Act
+        var result = await controller.ExecuteReadQuery(new QueryRequest { Query = "SELECT * FROM YourTable", ConnectionString = "YourConnectionString" });
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task ExecuteWriteQuery_ShouldReturnBadRequestResultForDestructiveQuery()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<QueryController>>();
+        var queryServiceMock = new Mock<QueryService>();
+
+        var controller = new QueryController(loggerMock.Object, queryServiceMock.Object);
+
+        // Act
+        var result = await controller.ExecuteWriteQuery(new QueryRequest { Query = "DELETE FROM YourTable", ConnectionString = "YourConnectionString" });
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+}
