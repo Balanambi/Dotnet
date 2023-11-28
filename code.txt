@@ -313,3 +313,37 @@ public class QueryControllerTests
         Assert.IsType<BadRequestObjectResult>(result);
     }
 }
+
+
+---Last
+
+// QueryService.cs
+using Microsoft.Extensions.Configuration;
+
+public class QueryService
+{
+    private readonly IConfiguration _configuration;
+
+    public QueryService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    public QueryResult ExecuteReadQuery(string query, string connectionStringName)
+    {
+        string connectionString = _configuration.GetConnectionString(connectionStringName);
+
+        // Use connectionString as needed
+
+        // Rest of your logic
+    }
+
+    public QueryResult ExecuteWriteQuery(string query, string connectionStringName)
+    {
+        string connectionString = _configuration.GetConnectionString(connectionStringName);
+
+        // Use connectionString as needed
+
+        // Rest of your logic
+    }
+}
