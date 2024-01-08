@@ -19,6 +19,8 @@ IF EXISTS (
 )
 BEGIN
     PRINT 'The specified non-clustered index already exists on the table.';
+    CREATE NONCLUSTERED INDEX IX_MyTable_Column1_Column2
+    ON MyTable (Column1, Column2);
 END
 ELSE
 BEGIN
