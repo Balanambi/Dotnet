@@ -14,7 +14,8 @@ IF EXISTS (
     AND i.is_primary_key = 0 -- Exclude primary key indexes
     AND i.is_unique = 0 -- Exclude unique indexes
     AND i.name IS NOT NULL -- Exclude heap (table without clustered index)
-    AND c.name IN (SELECT value FROM STRING_SPLIT(@IndexColumns, ','))
+    --AND c.name IN (SELECT value FROM STRING_SPLIT(@IndexColumns, ','))
+    AND CHARINDEX(c.name, @IndexColumns) > 0
 )
 BEGIN
     PRINT 'The specified non-clustered index already exists on the table.';
