@@ -1,3 +1,25 @@
+CREATE FUNCTION dbo.STRING_SPLIT_UDF
+(
+    @String NVARCHAR(MAX),
+    @Delimiter NVARCHAR(255)
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    WITH SplitCTE AS
+    (
+        SELECT 
+            CAST('<' + REPLACE(@String, @Delimiter, '</><') + '</>' AS XML) AS SplitXML
+    )
+    SELECT 
+        LTRIM(RTRIM(T.c.value('.', 'NVARCHAR(MAX)'))) AS Value
+    FROM 
+        SplitCTE
+    CROSS APPLY 
+        SplitXML.nodes('/root/row') T(c)
+);
+------------------------------------
 -- Specify your table and columns
 DECLARE @TableName NVARCHAR(128) = 'YourTableName';
 DECLARE @IndexName NVARCHAR(128) = 'IX_NonClusteredIndex'; -- Specify the desired index name
@@ -15,6 +37,7 @@ IF NOT EXISTS (
     AND i.is_primary_key = 0 -- Exclude primary key indexes
     AND i.is_unique = 0 -- Exclude unique indexes
     AND i.name IS NOT NULL -- Exclude heap (table without clustered index)
+    -- AND c.name IN (SELECT value FROM dbo.STRING_SPLIT_UDF(@IndexColumns, ','))
     AND CHARINDEX(c.name, @IndexColumns) > 0
 )
 BEGIN
