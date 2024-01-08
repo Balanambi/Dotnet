@@ -1,9 +1,10 @@
 -- Specify your table and columns
 DECLARE @TableName NVARCHAR(128) = 'YourTableName';
+DECLARE @IndexName NVARCHAR(128) = 'IX_NonClusteredIndex'; -- Specify the desired index name
 DECLARE @IndexColumns NVARCHAR(MAX) = 'Column1, Column2'; -- Replace with your column names
 
 -- Check if the index already exists
-IF EXISTS (
+IF NOT EXISTS (
     SELECT 1
     FROM sys.indexes i
     INNER JOIN sys.tables t ON i.object_id = t.object_id
@@ -14,15 +15,20 @@ IF EXISTS (
     AND i.is_primary_key = 0 -- Exclude primary key indexes
     AND i.is_unique = 0 -- Exclude unique indexes
     AND i.name IS NOT NULL -- Exclude heap (table without clustered index)
-    --AND c.name IN (SELECT value FROM STRING_SPLIT(@IndexColumns, ','))
     AND CHARINDEX(c.name, @IndexColumns) > 0
 )
 BEGIN
-    PRINT 'The specified non-clustered index already exists on the table.';
-    CREATE NONCLUSTERED INDEX IX_MyTable_Column1_Column2
-    ON MyTable (Column1, Column2);
+    -- Create the non-clustered index
+    DECLARE @IndexCreationQuery NVARCHAR(MAX);
+    SET @IndexCreationQuery = 
+        'CREATE NONCLUSTERED INDEX ' + @IndexName +
+        ' ON ' + @TableName + ' (' + @IndexColumns + ');';
+
+    EXEC sp_executesql @IndexCreationQuery;
+
+    PRINT 'Non-clustered index created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'The specified non-clustered index does not exist on the table.';
+    PRINT 'The specified non-clustered index already exists on the table.';
 END;
