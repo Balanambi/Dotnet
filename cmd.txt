@@ -17,6 +17,11 @@ exit /b %errorlevel%
 
 @echo off
 
+for /f %%A in ('powershell -command "(Invoke-WebRequest -Uri '%healthCheckUrl%').StatusCode" ^| find /v "d"') do set "statusCode=%%A"
+
+set "statusCode=%statusCode:~0,-1%"  REM Remove the trailing carriage return character
+
+
 set "healthCheckUrl=http://example.com/health"  REM replace with your actual health check URL
 set "startScript=StartService.bat"              REM replace with the name of your start batch file
 
