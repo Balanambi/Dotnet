@@ -35,3 +35,26 @@ if "%statusCode%" neq "200" (
 )
 
 exit /b 0
+
+
+---------------------------
+
+@echo off
+
+set "healthCheckUrl=http://example.com/health"  REM replace with your actual health check URL
+set "startScript=StartService.bat"              REM replace with the name of your start batch file
+
+for /f "tokens=2 delims= " %%A in ('curl -Is "%healthCheckUrl%" ^| find "HTTP"') do set "statusCode=%%A"
+
+echo HTTP status code: %statusCode%
+
+timeout /t 5 /nobreak > nul  REM Adjust the timeout value as needed (in seconds)
+
+if "%statusCode%" neq "200" (
+    echo URL is down! Starting the service...
+    call %startScript%
+) else (
+    echo URL is up. No action needed.
+)
+
+exit /b 0
