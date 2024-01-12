@@ -21,7 +21,7 @@ set "healthCheckUrl=http://example.com/health"  REM replace with your actual hea
 set "startScript=StartService.bat"              REM replace with the name of your start batch file
 
 for /f %%A in ('powershell -command "(Invoke-WebRequest -Uri '%healthCheckUrl%').StatusCode"') do set "statusCode=%%A"
-
+timeout /t 2 /nobreak >nul  
 if "%statusCode%" neq "200" (
     echo URL is down! Starting the service...
     call %startScript%
