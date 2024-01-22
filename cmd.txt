@@ -58,3 +58,12 @@ if "%statusCode%" neq "200" (
 )
 
 exit /b 0
+
+
+
+// Your string
+        string originalString = "Hello, World!";
+
+        // Convert the string to Base64
+        string base64String = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(originalString));
+
