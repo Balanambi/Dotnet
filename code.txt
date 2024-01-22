@@ -1,4 +1,5 @@
 // QueryService.cs
+//https://github.com/dotnet/AspNetCore.Docs/blob/0ede1d557978b6264be47e85864e3e7ca756695f/aspnetcore/common/samples/WebApplication1/Startup.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
