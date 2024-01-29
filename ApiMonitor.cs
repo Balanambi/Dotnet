@@ -109,3 +109,73 @@ public class ApiMonitor
         }
     }
 }
+
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+public class Startup
+{
+    public IConfiguration Configuration { get; }
+
+    public Startup(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Include ApiMonitor in services
+        services.AddSingleton<ApiMonitor>();
+
+        // Other service configurations...
+    }
+
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+    {
+        // Other app configurations...
+    }
+}
+
+
+using System;
+using System.Diagnostics;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var serviceProvider = ConfigureServices();
+        var apiMonitor = serviceProvider.GetRequiredService<ApiMonitor>();
+        
+        await apiMonitor.StartApiAsync();
+
+        Console.WriteLine("Press any key to stop the monitoring.");
+        Console.ReadKey();
+
+        await apiMonitor.StopApiAsync();
+    }
+
+    static IServiceProvider ConfigureServices()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .Build();
+
+        var services = new ServiceCollection();
+
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<ApiMonitor>();
+
+        return services.BuildServiceProvider();
+    }
+}
