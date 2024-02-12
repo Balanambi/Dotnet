@@ -348,3 +348,12 @@ public class QueryService
         // Rest of your logic
     }
 }
+
+
+We have hosted an AspNet Core 6 WebApi using a Kestrel host server on a Windows server. We have a batch script to start the API, and upon starting, the dotnet.exe process begins and runs on the server. However, sometimes the dotnet.exe process crashes without any apparent error messages at the application level or in the event viewer.
+
+The API is configured to run on the following ports:
+HTTP - 8445
+HTTPS - 8448
+
+We need to investigate why the dotnet.exe process is crashing and understand the nature of these crashes on the Windows server.
