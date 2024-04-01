@@ -55,3 +55,20 @@ ELSE
 BEGIN
     PRINT 'The specified non-clustered index already exists on the table.';
 END;
+
+
+CREATE PROCEDURE GetFeedsWithPagination
+    @PageNumber INT,
+    @PageSize INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    SELECT YourColumns
+    FROM YourTable
+    ORDER BY YourOrderByColumns
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
