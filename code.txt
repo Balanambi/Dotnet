@@ -349,6 +349,31 @@ public class QueryService
     }
 }
 
+ public static string GetPackageVersionFromDepsJson(string depsJsonPath, string packageName)
+    {
+        if (!File.Exists(depsJsonPath))
+        {
+            return "Deps.json file not found";
+        }
+
+        var jsonString = File.ReadAllText(depsJsonPath);
+        using var jsonDoc = JsonDocument.Parse(jsonString);
+        var root = jsonDoc.RootElement;
+
+        var targets = root.GetProperty("targets");
+
+        var version = targets.EnumerateObject()
+                             .SelectMany(target => target.Value.EnumerateObject())
+                             .SelectMany(dependency => dependency.Value.EnumerateObject())
+                             .Where(dep => dep.Name.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
+                             .SelectMany(deps => deps.Value.EnumerateObject())
+                             .Where(dep => dep.Name.Equals(packageName, StringComparison.OrdinalIgnoreCase))
+                             .Select(dep => dep.Value.GetString())
+                             .FirstOrDefault();
+
+        return version ?? "Package not found";
+    }
+
 
 We have initiated discussions with the AAA team to investigate the crashes of the dotnet.exe process. As part of our analysis, we have begun monitoring the dotnet.exe process using the Process Monitor tool. This tool will generate crash dump reports whenever the API goes down, allowing us to analyze the cause of the issue.
 
