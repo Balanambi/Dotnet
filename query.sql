@@ -72,3 +72,45 @@ BEGIN
     OFFSET @Offset ROWS
     FETCH NEXT @PageSize ROWS ONLY;
 END;
+
+
+DECLARE @TableName NVARCHAR(128) = 'YourTableName' -- Change this to your table name
+DECLARE @SchemaName NVARCHAR(128) = 'dbo'          -- Change this to your schema if needed
+DECLARE @ColumnList NVARCHAR(MAX) = ''
+DECLARE @ColumnConditions NVARCHAR(MAX) = ''
+DECLARE @InsertStatement NVARCHAR(MAX) = ''
+DECLARE @GeneratedScript NVARCHAR(MAX) = ''
+
+-- 1. Get the list of columns for the specified table
+SELECT 
+    @ColumnList = STRING_AGG(COLUMN_NAME, ', '),
+    @ColumnConditions = STRING_AGG('[' + COLUMN_NAME + '] = @' + COLUMN_NAME, ' AND ')
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = @TableName AND TABLE_SCHEMA = @SchemaName
+
+-- 2. Generate dynamic SQL to create INSERT statements with an IF NOT EXISTS clause
+SET @InsertStatement = 'INSERT INTO [' + @SchemaName + '].[' + @TableName + '] (' + @ColumnList + ') VALUES (' + 
+                        STRING_AGG('@' + COLUMN_NAME, ', ') + ')'
+
+-- 3. Generate the entire script
+SET @GeneratedScript = '
+DECLARE @' + REPLACE(@ColumnList, ', ', ' NVARCHAR(MAX), @') + ' NVARCHAR(MAX);
+
+-- Sample values for demonstration; replace with actual values or logic to pull these from a source
+SET @' + REPLACE(REPLACE(@ColumnList, ', ', ' = ''SampleValue''; SET @'), ' ', '') + ' = ''SampleValue'';
+
+IF NOT EXISTS (
+    SELECT 1 FROM [' + @SchemaName + '].[' + @TableName + ']
+    WHERE ' + @ColumnConditions + '
+)
+BEGIN
+    ' + @InsertStatement + '
+END
+ELSE
+BEGIN
+    PRINT ''Record already exists in [' + @SchemaName + '].[' + @TableName + ']. No insert required.'';
+END;
+'
+
+-- 4. Print or execute the generated script
+PRINT @GeneratedScript
