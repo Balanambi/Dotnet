@@ -78,26 +78,27 @@ DECLARE @TableName NVARCHAR(128) = 'YourTableName' -- Change this to your table 
 DECLARE @SchemaName NVARCHAR(128) = 'dbo'          -- Change this to your schema if needed
 DECLARE @ColumnList NVARCHAR(MAX) = ''
 DECLARE @ColumnConditions NVARCHAR(MAX) = ''
+DECLARE @ParameterList NVARCHAR(MAX) = ''
 DECLARE @InsertStatement NVARCHAR(MAX) = ''
 DECLARE @GeneratedScript NVARCHAR(MAX) = ''
 
--- 1. Get the list of columns for the specified table
+-- 1. Get the list of columns and parameters for the specified table
 SELECT 
-    @ColumnList = STRING_AGG(COLUMN_NAME, ', '),
-    @ColumnConditions = STRING_AGG('[' + COLUMN_NAME + '] = @' + COLUMN_NAME, ' AND ')
+    @ColumnList = STRING_AGG('[' + COLUMN_NAME + ']', ', '),
+    @ColumnConditions = STRING_AGG('[' + COLUMN_NAME + '] = @' + COLUMN_NAME, ' AND '),
+    @ParameterList = STRING_AGG('@' + COLUMN_NAME, ', ')
 FROM INFORMATION_SCHEMA.COLUMNS 
 WHERE TABLE_NAME = @TableName AND TABLE_SCHEMA = @SchemaName
 
--- 2. Generate dynamic SQL to create INSERT statements with an IF NOT EXISTS clause
-SET @InsertStatement = 'INSERT INTO [' + @SchemaName + '].[' + @TableName + '] (' + @ColumnList + ') VALUES (' + 
-                        STRING_AGG('@' + COLUMN_NAME, ', ') + ')'
+-- 2. Generate the dynamic INSERT statement with the column and parameter lists
+SET @InsertStatement = 'INSERT INTO [' + @SchemaName + '].[' + @TableName + '] (' + @ColumnList + ') VALUES (' + @ParameterList + ')'
 
--- 3. Generate the entire script
+-- 3. Generate the entire script with the conditional check
 SET @GeneratedScript = '
-DECLARE @' + REPLACE(@ColumnList, ', ', ' NVARCHAR(MAX), @') + ' NVARCHAR(MAX);
+DECLARE ' + REPLACE(@ColumnList, ', ', ' NVARCHAR(MAX), ') + ' NVARCHAR(MAX);
 
 -- Sample values for demonstration; replace with actual values or logic to pull these from a source
-SET @' + REPLACE(REPLACE(@ColumnList, ', ', ' = ''SampleValue''; SET @'), ' ', '') + ' = ''SampleValue'';
+' + REPLACE('SET ' + REPLACE(@ColumnList, '[', '@'), '] = ''SampleValue'';', ', ', ' SET ') + '
 
 IF NOT EXISTS (
     SELECT 1 FROM [' + @SchemaName + '].[' + @TableName + ']
@@ -114,3 +115,4 @@ END;
 
 -- 4. Print or execute the generated script
 PRINT @GeneratedScript
+
